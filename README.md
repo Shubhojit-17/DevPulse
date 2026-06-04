@@ -5,7 +5,7 @@ DevPulse is an engineering analytics dashboard that aggregates GitHub pull reque
 ## Core Features
 - Daily metric snapshots per repository
 - Cycle time & PR size analysis
-- AI-generated weekly email digests (powered by Gemini)
+- AI-generated weekly email digests (powered by Groq + Llama 3.3 70B)
 - Automated historical backfilling via BullMQ
 
 ## Tech Stack
@@ -14,11 +14,11 @@ DevPulse is an engineering analytics dashboard that aggregates GitHub pull reque
 - BullMQ (Redis)
 - NextAuth.js (GitHub OAuth)
 - Resend (Email)
-- Google Gemini API
+- Groq + Llama 3.3 70B
 
 ## Setup Instructions
 1. Clone the repository and install dependencies using `npm install`.
-2. Configure `.env` with your PostgreSQL, Redis, NextAuth, GitHub App, Gemini, and Resend credentials.
+2. Configure `.env` with your PostgreSQL, Redis, NextAuth, GitHub App, Groq + Llama 3.3 70B, and Resend credentials.
 3. Run `npm run db:push` to sync the Prisma schema.
 4. Start the application:
    - Next.js server: `npm run dev`

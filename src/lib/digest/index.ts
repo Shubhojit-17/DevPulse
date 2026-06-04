@@ -1,9 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { Resend } from "resend";
 
 import { prisma } from "@/lib/prisma";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
 const resend = new Resend(process.env.RESEND_API_KEY ?? "");
 
 export async function generateAndSendWeeklyDigest() {
@@ -175,11 +175,9 @@ async function generateNarrative(
   deltas: Record<string, number>,
   metrics: AggregatedMetrics
 ): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) {
-    return "Weekly digest generation is not configured (GEMINI_API_KEY not set).";
+  if (!process.env.GROQ_API_KEY) {
+    return "Weekly digest generation is not configured (GROQ_API_KEY not set).";
   }
-
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
   const prompt = `You are an engineering coach. Given these metric changes for the repository "${repoName}" over the past week, write a 3-paragraph plain-English summary.
 
@@ -198,6 +196,16 @@ Current week totals:
 
 First paragraph: what improved. Second paragraph: what regressed or needs attention. Third paragraph: one specific recommendation. Be concrete, not generic. Do not mention percentages or raw numbers — translate them into meaning.`;
 
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  const completion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    model: "llama-3.3-70b-versatile",
+    max_tokens: 1000,
+  });
+
+  return completion.choices[0]?.message?.content || "";
 }
