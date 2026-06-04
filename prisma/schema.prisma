@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BackfillStatus {
+  pending
+  in_progress
+  completed
+  failed
+}
+
+enum ReviewState {
+  approved
+  changes_requested
+  commented
+}
+
+enum DeploymentStatus {
+  pending
+  success
+  failure
+  error
+}
+
+model User {
+  id           String   @id @default(cuid())
+  githubId     Int      @unique
+  login        String
+  name         String?
+  email        String?  @unique
+  emailVerified DateTime?
+  image        String?
+  avatarUrl    String?
+  accessToken  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  repositories UserRepository[]
+
+  @@map("users")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationTokens")
+}
+
+model Repository {
+  id            String         @id @default(cuid())
+  githubId      Int            @unique
+  fullName      String
+  owner         String
+  name          String
+  defaultBranch String
+  isPrivate     Boolean
+  webhookId     Int?
+  webhookSecret String
+  backfillStatus BackfillStatus @default(pending)
+  lastBackfillAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  users         UserRepository[]
+  pullRequests  PullRequest[]
+  deployments   Deployment[]
+  metrics       DailyMetric[]
+  webhookDeliveries WebhookDelivery[]
+
+  @@map("repositories")
+}
+
+model UserRepository {
+  id           String   @id @default(cuid())
+  userId       String
+  repositoryId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repositoryId])
+  @@map("userRepositories")
+}
+
+model WebhookDelivery {
+  id           String   @id
+  repositoryId String
+  event        String
+  receivedAt   DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@map("webhookDeliveries")
+}
+
+model PullRequest {
+  id                       String    @id @default(cuid())
+  githubPrId               Int       @unique
+  repoId                   String
+  number                   Int
+  title                    String
+  authorLogin              String
+  state                    String
+  merged                   Boolean
+  draft                    Boolean
+  additions                Int
+  deletions                Int
+  changedFiles             Int
+  createdAt                DateTime
+  updatedAt                DateTime
+  closedAt                 DateTime?
+  mergedAt                 DateTime?
+  firstReviewAt            DateTime?
+  cycleTimeSeconds         Int?
+  timeToFirstReviewSeconds Int?
+
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  reviews    PrReview[]
+
+  @@index([repoId])
+  @@unique([repoId, number])
+  @@map("pullRequests")
+}
+
+model PrReview {
+  id            String      @id @default(cuid())
+  githubReviewId Int       @unique
+  pullRequestId String
+  reviewerLogin String
+  state         ReviewState
+  submittedAt   DateTime
+
+  pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@index([pullRequestId])
+  @@map("prReviews")
+}
+
+model Deployment {
+  id                 String           @id @default(cuid())
+  githubDeploymentId Int              @unique
+  repoId             String
+  environment        String
+  ref                String
+  sha                String
+  createdAt          DateTime
+  status             DeploymentStatus
+  statusUpdatedAt    DateTime?
+
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([repoId])
+  @@map("deployments")
+}
+
+model DailyMetric {
+  id                       String   @id @default(cuid())
+  repoId                   String
+  date                     DateTime
+  prsOpened                Int
+  prsMerged                Int
+  prsClosed                Int
+  avgCycleTimeSeconds      Int
+  avgTimeToFirstReviewSeconds Int
+  reviewsSubmitted         Int
+  deploymentsTotal         Int
+  deploymentSuccesses      Int
+  deploymentFailures       Int
+
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, date])
+  @@index([repoId])
+  @@map("dailyMetrics")
+}
