@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  debug: true,
   session: {
     strategy: "database",
   },
@@ -54,9 +53,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn(message) {
-      console.log('[NextAuth signIn event]', message);
-      const { user, account, profile } = message;
+    async signIn({ user, account, profile }) {
       if (!account?.access_token || !profile) {
         return;
       }
@@ -82,9 +79,6 @@ export const authOptions: NextAuthOptions = {
       } catch (error) {
         console.error('[accessToken storage error]', error);
       }
-    },
-    async createUser(message) {
-      console.log('[NextAuth createUser event]', message);
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

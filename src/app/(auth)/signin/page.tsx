@@ -19,7 +19,7 @@ export default function SignInPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Sign in to connect repositories and start tracking delivery metrics.
         </p>
-        <Button className="mt-6 w-full" onClick={() => signIn("github")}>
+        <Button className="mt-6 w-full" onClick={() => signIn('github', { callbackUrl: '/dashboard' })}>
           Continue with GitHub
         </Button>
       </div>
