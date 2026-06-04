@@ -109,18 +109,22 @@ export async function POST(request: Request) {
     },
   });
 
-  const webhook = await registerGitHubWebhook(
-    user.accessToken,
-    ghRepo.owner.login,
-    ghRepo.name,
-    `${appUrl}/api/webhooks/github?repoId=${repository.id}`,
-    webhookSecret
-  );
+  try {
+    const webhook = await registerGitHubWebhook(
+      user.accessToken,
+      ghRepo.owner.login,
+      ghRepo.name,
+      `${appUrl}/api/webhooks/github?repoId=${repository.id}`,
+      webhookSecret
+    );
 
-  await prisma.repository.update({
-    where: { id: repository.id },
-    data: { webhookId: webhook.id },
-  });
+    await prisma.repository.update({
+      where: { id: repository.id },
+      data: { webhookId: webhook.id },
+    });
+  } catch (error) {
+    console.warn(`[Webhook Warning] Failed to register webhook for ${ghRepo.full_name}. This is expected on localhost. Historical backfill will still proceed. Error:`, error);
+  }
 
   await prisma.userRepository.create({
     data: {
