@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  debug: true,
   session: {
     strategy: "database",
   },
@@ -53,7 +54,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn({ user, account, profile }) {
+    async signIn(message) {
+      console.log('[NextAuth signIn event]', message);
+      const { user, account, profile } = message;
       if (!account?.access_token || !profile) {
         return;
       }
@@ -65,16 +68,23 @@ export const authOptions: NextAuthOptions = {
       const avatarUrl =
         "avatar_url" in profile ? String(profile.avatar_url) : user.image;
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          accessToken: account.access_token,
-          githubId: Number(profile.id),
-          login: String(profile.login),
-          avatarUrl,
-          image: avatarUrl,
-        },
-      });
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            accessToken: account.access_token,
+            githubId: Number(profile.id),
+            login: String(profile.login),
+            avatarUrl,
+            image: avatarUrl,
+          },
+        });
+      } catch (error) {
+        console.error('[accessToken storage error]', error);
+      }
+    },
+    async createUser(message) {
+      console.log('[NextAuth createUser event]', message);
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
