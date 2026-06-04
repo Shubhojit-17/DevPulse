@@ -179,7 +179,7 @@ async function generateNarrative(
     return "Weekly digest generation is not configured (GEMINI_API_KEY not set).";
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
   const prompt = `You are an engineering coach. Given these metric changes for the repository "${repoName}" over the past week, write a 3-paragraph plain-English summary.
 

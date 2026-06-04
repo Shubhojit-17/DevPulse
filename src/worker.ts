@@ -12,6 +12,7 @@ import { processDeployment } from "@/lib/queue/processors/deployment";
 import { processDeploymentStatus } from "@/lib/queue/processors/deployment-status";
 import { processPullRequest } from "@/lib/queue/processors/pull-request";
 import { processPullRequestReview } from "@/lib/queue/processors/pull-request-review";
+import { processPush } from "@/lib/queue/processors/push";
 import { backfillRepository } from "@/lib/github/backfill";
 import { computeDailyMetrics } from "@/lib/metrics/compute";
 import { generateAndSendWeeklyDigest } from "@/lib/digest";
@@ -31,6 +32,8 @@ const githubEventsWorker = new Worker(
         return processDeployment(data);
       case "deployment_status":
         return processDeploymentStatus(data);
+      case "push":
+        return processPush(data);
       default:
         return data;
     }

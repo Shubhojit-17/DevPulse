@@ -12,40 +12,30 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { repoIds, startDate, endDate } = body;
+  const { repoId, fromDate, toDate } = body;
 
-  const repos = repoIds
-    ? await prisma.repository.findMany({ where: { id: { in: repoIds } } })
-    : await prisma.repository.findMany();
+  if (!repoId || !fromDate || !toDate) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
 
-  const start = new Date(startDate);
+  const repo = await prisma.repository.findUnique({ where: { id: repoId } });
+  if (!repo) {
+    return NextResponse.json({ error: "Repository not found" }, { status: 404 });
+  }
+
+  const start = new Date(fromDate);
   start.setUTCHours(0, 0, 0, 0);
-  const end = new Date(endDate);
+  const end = new Date(toDate);
   end.setUTCHours(0, 0, 0, 0);
 
-  const results = [];
+  let daysRecomputed = 0;
   const currentDate = new Date(start);
 
   while (currentDate <= end) {
-    for (const repo of repos) {
-      try {
-        await computeDailyMetrics(repo.id, currentDate);
-        results.push({
-          repoId: repo.id,
-          date: currentDate.toISOString().split("T")[0],
-          status: "success",
-        });
-      } catch (error) {
-        results.push({
-          repoId: repo.id,
-          date: currentDate.toISOString().split("T")[0],
-          status: "error",
-          error: String(error),
-        });
-      }
-    }
+    await computeDailyMetrics(repo.id, currentDate);
+    daysRecomputed++;
     currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ success: true, daysRecomputed });
 }

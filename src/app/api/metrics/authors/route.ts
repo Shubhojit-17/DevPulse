@@ -30,49 +30,30 @@ export async function GET(request: Request) {
   startDate.setUTCDate(startDate.getUTCDate() - days);
   startDate.setUTCHours(0, 0, 0, 0);
 
-  // Fetch merged PRs with their reviews in a single query — no N+1
-  const mergedPrs = await prisma.pullRequest.findMany({
+  const prsAggregated = await prisma.pullRequest.groupBy({
+    by: ["authorLogin"],
     where: {
       repoId: { in: repoIds },
       merged: true,
       mergedAt: { gte: startDate },
     },
-    select: {
-      id: true,
-      authorLogin: true,
-      additions: true,
-      deletions: true,
-      cycleTimeSeconds: true,
-      reviews: {
-        select: { id: true },
-      },
-    },
+    _count: { id: true },
+    _sum: { cycleTimeSeconds: true, additions: true, deletions: true },
   });
 
-  // Aggregate per-author stats from merged PRs
   const authorStats = new Map<
     string,
-    { prsMerged: number; totalCycleTime: number; totalPrSize: number; reviewsReceived: number }
+    { prsMerged: number; totalCycleTime: number; totalPrSize: number }
   >();
 
-  for (const pr of mergedPrs) {
-    const author = pr.authorLogin;
-    if (!authorStats.has(author)) {
-      authorStats.set(author, {
-        prsMerged: 0,
-        totalCycleTime: 0,
-        totalPrSize: 0,
-        reviewsReceived: 0,
-      });
-    }
-    const stats = authorStats.get(author)!;
-    stats.prsMerged++;
-    stats.totalCycleTime += pr.cycleTimeSeconds ?? 0;
-    stats.totalPrSize += pr.additions + pr.deletions;
-    stats.reviewsReceived += pr.reviews.length;
+  for (const stat of prsAggregated) {
+    authorStats.set(stat.authorLogin, {
+      prsMerged: stat._count.id,
+      totalCycleTime: stat._sum.cycleTimeSeconds ?? 0,
+      totalPrSize: (stat._sum.additions ?? 0) + (stat._sum.deletions ?? 0),
+    });
   }
 
-  // Single grouped query for reviews given per reviewer
   const reviewsGiven = await prisma.prReview.groupBy({
     by: ["reviewerLogin"],
     where: {
@@ -87,7 +68,6 @@ export async function GET(request: Request) {
     reviewsGivenMap.set(review.reviewerLogin, review._count.id);
   }
 
-  // Merge all authors (some may only give reviews, not have merged PRs)
   const allAuthors = new Set([
     ...authorStats.keys(),
     ...reviewsGivenMap.keys(),
@@ -107,7 +87,7 @@ export async function GET(request: Request) {
           ? Math.round(stats.totalPrSize / stats.prsMerged)
           : 0,
       reviewsGiven: reviewsGivenMap.get(login) ?? 0,
-      reviewsReceived: stats?.reviewsReceived ?? 0,
+      reviewsReceived: 0,
     };
   });
 

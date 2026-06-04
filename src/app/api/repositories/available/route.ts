@@ -36,20 +36,16 @@ export async function GET() {
 
   try {
     const repos: GitHubRepo[] = [];
-    let page = 1;
-    const perPage = 100;
+    let url: string | null = "https://api.github.com/user/repos?per_page=100&sort=updated";
 
-    while (true) {
-      const response = await fetch(
-        `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated`,
-        {
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${user.accessToken}`,
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        }
-      );
+    while (url) {
+      const response: Response = await fetch(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${user.accessToken}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
 
       if (!response.ok) {
         const message = await response.text();
@@ -62,11 +58,18 @@ export async function GET() {
       const pageRepos = (await response.json()) as GitHubRepo[];
       repos.push(...pageRepos);
 
-      if (pageRepos.length < perPage) {
-        break;
+      const linkHeader = response.headers.get("link");
+      url = null;
+      if (linkHeader) {
+        const links = linkHeader.split(",");
+        for (const link of links) {
+          const match = link.match(/<([^>]+)>;\s*rel="next"/);
+          if (match) {
+            url = match[1];
+            break;
+          }
+        }
       }
-
-      page++;
     }
 
     const connectedRepos = await prisma.repository.findMany({
