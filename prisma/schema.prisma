@@ -29,7 +29,7 @@ enum DeploymentStatus {
 
 model User {
   id           String   @id @default(cuid())
-  githubId     Int      @unique
+  githubId     BigInt   @unique
   login        String
   name         String?
   email        String?  @unique
@@ -89,7 +89,7 @@ model VerificationToken {
 
 model Repository {
   id            String         @id @default(cuid())
-  githubId      Int            @unique
+  githubId      BigInt         @unique
   fullName      String
   owner         String
   name          String
@@ -105,6 +105,7 @@ model Repository {
   users         UserRepository[]
   pullRequests  PullRequest[]
   deployments   Deployment[]
+  commits       Commit[]
   metrics       DailyMetric[]
   webhookDeliveries WebhookDelivery[]
 
@@ -137,7 +138,7 @@ model WebhookDelivery {
 
 model PullRequest {
   id                       String    @id @default(cuid())
-  githubPrId               Int       @unique
+  githubPrId               BigInt    @unique
   repoId                   String
   number                   Int
   title                    String
@@ -166,7 +167,7 @@ model PullRequest {
 
 model PrReview {
   id            String      @id @default(cuid())
-  githubReviewId Int       @unique
+  githubReviewId BigInt    @unique
   pullRequestId String
   reviewerLogin String
   state         ReviewState
@@ -180,7 +181,7 @@ model PrReview {
 
 model Deployment {
   id                 String           @id @default(cuid())
-  githubDeploymentId Int              @unique
+  githubDeploymentId BigInt           @unique
   repoId             String
   environment        String
   ref                String
@@ -193,6 +194,21 @@ model Deployment {
 
   @@index([repoId])
   @@map("deployments")
+}
+
+model Commit {
+  id           String   @id @default(cuid())
+  githubSha    String   @unique
+  repoId       String
+  message      String
+  authorLogin  String?
+  authorEmail  String?
+  createdAt    DateTime
+
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([repoId])
+  @@map("commits")
 }
 
 model DailyMetric {
@@ -208,6 +224,7 @@ model DailyMetric {
   deploymentsTotal         Int
   deploymentSuccesses      Int
   deploymentFailures       Int
+  commitsTotal             Int      @default(0)
 
   repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -21,6 +22,8 @@ interface SimpleBarChartProps {
 }
 
 export function SimpleBarChart({ data, color = "#0f766e" }: SimpleBarChartProps) {
+  const pathname = usePathname();
+
   if (data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -31,7 +34,7 @@ export function SimpleBarChart({ data, color = "#0f766e" }: SimpleBarChartProps)
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical">
+      <BarChart key={pathname} data={data} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(15, 23, 42, 0.1)" />
         <XAxis type="number" stroke="rgba(15, 23, 42, 0.3)" fontSize={12} />
         <YAxis

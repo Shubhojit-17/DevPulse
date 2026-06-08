@@ -1,4 +1,5 @@
 import { GitHubEventJob } from "@/lib/queue";
+import { prisma } from "@/lib/prisma";
 
 interface PushPayload {
   repository: {
@@ -23,6 +24,30 @@ export async function processPush(job: GitHubEventJob) {
   console.log(
     `[PUSH EVENT] Repo: ${repoName}, Branch/Ref: ${ref}, Pusher: ${pusherName}, Commits: ${commitCount}`
   );
-  
+
+  const repository = await prisma.repository.findFirst({
+    where: { fullName: repoName },
+  });
+
+  if (!repository) {
+    console.log(`Repository ${repoName} not found, ignoring push event`);
+    return job;
+  }
+
+  for (const commit of data.commits as any[]) {
+    await prisma.commit.upsert({
+      where: { githubSha: commit.id },
+      update: {},
+      create: {
+        githubSha: commit.id,
+        repoId: repository.id,
+        message: commit.message,
+        authorLogin: commit.author?.username || commit.author?.name,
+        authorEmail: commit.author?.email,
+        createdAt: new Date(commit.timestamp),
+      },
+    });
+  }
+
   return job;
 }

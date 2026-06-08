@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -22,6 +23,8 @@ interface StackedBarChartProps {
 }
 
 export function StackedBarChart({ data, bars }: StackedBarChartProps) {
+  const pathname = usePathname();
+
   if (data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -37,7 +40,7 @@ export function StackedBarChart({ data, bars }: StackedBarChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data}>
+      <BarChart key={pathname} data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(15, 23, 42, 0.1)" />
         <XAxis
           dataKey="date"

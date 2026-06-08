@@ -30,6 +30,8 @@ export async function GET(request: Request) {
       deploymentFrequencyTrend: 0,
       leadTimeTrend: 0,
       changeFailureRateTrend: 0,
+      commitsTotal: 0,
+      commitsTrend: 0,
       timeSeries: [],
     });
   }
@@ -54,12 +56,15 @@ export async function GET(request: Request) {
       deploymentFrequencyTrend: 0,
       leadTimeTrend: 0,
       changeFailureRateTrend: 0,
+      commitsTotal: 0,
+      commitsTrend: 0,
       timeSeries: [],
     });
   }
 
   const totalDeployments = metrics.reduce((sum, m) => sum + m.deploymentsTotal, 0);
   const deploymentFrequency = totalDeployments / days;
+  const commitsTotal = metrics.reduce((sum, m) => sum + m.commitsTotal, 0);
 
   const mergedPrs = metrics.reduce((sum, m) => sum + m.prsMerged, 0);
   const totalCycleTime = metrics.reduce(
@@ -79,15 +84,17 @@ export async function GET(request: Request) {
   const secondHalf = metrics.filter((m) => m.date >= midpoint);
 
   const calcHalfMetrics = (half: typeof metrics) => {
-    if (half.length === 0) return { deployFreq: 0, leadTime: 0, failRate: 0 };
+    if (half.length === 0) return { deployFreq: 0, leadTime: 0, failRate: 0, commits: 0 };
     const deps = half.reduce((sum, m) => sum + m.deploymentsTotal, 0);
     const merged = half.reduce((sum, m) => sum + m.prsMerged, 0);
     const cycle = half.reduce((sum, m) => sum + m.avgCycleTimeSeconds * m.prsMerged, 0);
     const fails = half.reduce((sum, m) => sum + m.deploymentFailures, 0);
+    const commits = half.reduce((sum, m) => sum + m.commitsTotal, 0);
     return {
       deployFreq: deps / halfDays,
       leadTime: merged > 0 ? (cycle / merged / 3600) : 0,
       failRate: deps > 0 ? (fails / deps) * 100 : 0,
+      commits,
     };
   };
 
@@ -106,7 +113,11 @@ export async function GET(request: Request) {
     ? secondHalfMetrics.failRate - firstHalfMetrics.failRate
     : 0;
 
-  const timeSeriesMap = new Map<string, { date: string; deploymentFrequency: number; leadTimeHours: number; changeFailureRate: number }>();
+  const commitsTrend = firstHalfMetrics.commits > 0
+    ? ((secondHalfMetrics.commits - firstHalfMetrics.commits) / firstHalfMetrics.commits) * 100
+    : 0;
+
+  const timeSeriesMap = new Map<string, { date: string; deploymentFrequency: number; leadTimeHours: number; changeFailureRate: number; commits: number }>();
 
   for (const metric of metrics) {
     const dateKey = metric.date.toISOString().split("T")[0];
@@ -116,10 +127,12 @@ export async function GET(request: Request) {
         deploymentFrequency: 0,
         leadTimeHours: 0,
         changeFailureRate: 0,
+        commits: 0,
       });
     }
     const entry = timeSeriesMap.get(dateKey)!;
     entry.deploymentFrequency += metric.deploymentsTotal;
+    entry.commits += metric.commitsTotal;
     if (metric.prsMerged > 0) {
       entry.leadTimeHours += (metric.avgCycleTimeSeconds * metric.prsMerged) / 3600;
     }
@@ -133,15 +146,18 @@ export async function GET(request: Request) {
     deploymentFrequency: entry.deploymentFrequency,
     leadTimeHours: entry.leadTimeHours,
     changeFailureRate: entry.changeFailureRate,
+    commits: entry.commits,
   }));
 
   return NextResponse.json({
     deploymentFrequency: Math.round(deploymentFrequency * 100) / 100,
     leadTimeHours: Math.round(leadTimeHours * 100) / 100,
     changeFailureRate: Math.round(changeFailureRate * 100) / 100,
+    commitsTotal,
     deploymentFrequencyTrend: Math.round(deploymentFrequencyTrend),
     leadTimeTrend: Math.round(leadTimeTrend),
     changeFailureRateTrend: Math.round(changeFailureRateTrend),
+    commitsTrend: Math.round(commitsTrend),
     timeSeries,
   });
 }

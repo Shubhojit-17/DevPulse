@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   LineChart,
   Line,
@@ -28,6 +29,8 @@ interface MultiLineTrendChartProps {
 }
 
 export function MultiLineTrendChart({ data, series }: MultiLineTrendChartProps) {
+  const pathname = usePathname();
+
   if (data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -43,7 +46,7 @@ export function MultiLineTrendChart({ data, series }: MultiLineTrendChartProps) 
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+      <LineChart key={pathname} data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(15, 23, 42, 0.08)" />
         <XAxis
           dataKey="date"

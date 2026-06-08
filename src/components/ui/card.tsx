@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-white/10 bg-panel/70 shadow-soft",
+        "animate-fade-in-up rounded-3xl border border-white/10 bg-panel/70 shadow-soft opacity-0",
         className
       )}
       {...props}

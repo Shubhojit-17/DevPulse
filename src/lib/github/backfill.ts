@@ -26,6 +26,7 @@ export async function backfillRepository(params: BackfillParams) {
   try {
     await backfillPullRequests(repoId, accessToken, owner, name, since);
     await backfillDeployments(repoId, accessToken, owner, name, since);
+    await backfillCommits(repoId, accessToken, owner, name, since);
 
     await prisma.repository.update({
       where: { id: repoId },
@@ -267,6 +268,52 @@ async function backfillDeploymentStatuses(
         statusUpdatedAt: new Date(latestStatus.created_at),
       },
     });
+  }
+}
+
+async function backfillCommits(
+  repoId: string,
+  accessToken: string,
+  owner: string,
+  name: string,
+  since: Date
+) {
+  let page = 1;
+  const perPage = 100;
+  let hasMore = true;
+
+  while (hasMore) {
+    const commits = await githubRequest<any[]>(
+      accessToken,
+      `/repos/${owner}/${name}/commits?since=${since.toISOString()}&per_page=${perPage}&page=${page}`
+    );
+
+    if (commits.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    for (const commit of commits) {
+      const createdAt = new Date(commit.commit.author.date);
+
+      await prisma.commit.upsert({
+        where: { githubSha: commit.sha },
+        update: {},
+        create: {
+          githubSha: commit.sha,
+          repoId,
+          message: commit.commit.message,
+          authorLogin: commit.author?.login || commit.commit.author?.name,
+          authorEmail: commit.commit.author?.email,
+          createdAt,
+        },
+      });
+    }
+
+    page++;
+    if (commits.length < perPage) {
+      hasMore = false;
+    }
   }
 }
 

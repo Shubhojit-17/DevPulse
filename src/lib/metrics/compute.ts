@@ -108,6 +108,16 @@ export async function computeDailyMetrics(repoId: string, date: Date) {
     (d) => d.status === "failure" || d.status === "error"
   ).length;
 
+  const commitsTotal = await prisma.commit.count({
+    where: {
+      repoId,
+      createdAt: {
+        gte: targetDate,
+        lt: nextDate,
+      },
+    },
+  });
+
   await prisma.dailyMetric.upsert({
     where: {
       repoId_date: {
@@ -125,6 +135,7 @@ export async function computeDailyMetrics(repoId: string, date: Date) {
       deploymentsTotal,
       deploymentSuccesses,
       deploymentFailures,
+      commitsTotal,
     },
     create: {
       repoId,
@@ -138,6 +149,7 @@ export async function computeDailyMetrics(repoId: string, date: Date) {
       deploymentsTotal,
       deploymentSuccesses,
       deploymentFailures,
+      commitsTotal,
     },
   });
 }

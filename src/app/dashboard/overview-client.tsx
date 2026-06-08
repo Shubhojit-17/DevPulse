@@ -19,7 +19,10 @@ interface OverviewData {
     deploymentFrequency: number;
     leadTimeHours: number;
     changeFailureRate: number;
+    commits: number;
   }[];
+  commitsTotal: number;
+  commitsTrend: number;
 }
 
 function trendLabel(pct: number, unit = "%"): string {
@@ -65,7 +68,7 @@ export function OverviewPageClient() {
     return (
       <div className="flex flex-col gap-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               className="h-28 animate-pulse rounded-3xl bg-foreground/5"
@@ -86,6 +89,7 @@ export function OverviewPageClient() {
   }
 
   const chartSeries = [
+    { key: "commits", label: "Commits", color: "#eab308" },
     { key: "deploymentFrequency", label: "Deploy freq / day", color: "#0f766e" },
     { key: "leadTimeHours", label: "Lead time (hrs)", color: "#7c3aed" },
     { key: "changeFailureRate", label: "Change failure rate (%)", color: "#dc2626" },
@@ -114,6 +118,13 @@ export function OverviewPageClient() {
           trend={trendLabel(data.changeFailureRateTrend, "pp")}
           trendDirection={trendDir(data.changeFailureRateTrend)}
           positiveDirection="down"
+        />
+        <MetricCard
+          label="Total commits"
+          value={`${data.commitsTotal}`}
+          trend={trendLabel(data.commitsTrend)}
+          trendDirection={trendDir(data.commitsTrend)}
+          positiveDirection="up"
         />
         <MetricCard
           label="MTTR"

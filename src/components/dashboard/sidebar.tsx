@@ -17,6 +17,12 @@ const navItems = [
     exact: false,
   },
   {
+    label: "Commits",
+    href: "/dashboard/commits",
+    icon: "⊙",
+    exact: false,
+  },
+  {
     label: "Reviews",
     href: "/dashboard/reviews",
     icon: "✦",
